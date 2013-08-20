@@ -1,90 +1,28 @@
 <?php
-ini_set('display_errors', TRUE);
-ini_set('display_startup_errors', TRUE);
-error_reporting(E_ALL);
-
-include_once '../lib/include.php';
-include_once 'epiphany/src/Epi.php';
-include_once 'controllers/ApiController.php';
-include_once 'controllers/MeetingController.php';
-include_once 'controllers/DevelopmentApp.php';
-include_once 'controllers/LobbyistController.php';
-include_once 'controllers/LoginController.php';
-include_once 'controllers/UserController.php';
-include_once 'controllers/ChartController.php';
-
-Epi::setPath('base', 'epiphany/src');
-Epi::init('route');
-Epi::init('api');
-Epi::init('route','session-php');
-
-getApi()->get('/api/about', array('ApiController', 'about'), EpiApi::external);
-getApi()->get('/api/point', array('ApiController', 'point'), EpiApi::external);
-getApi()->get('/api/roads/(\d+)/([^/]+)', array('ApiController', 'road'), EpiApi::external);
-getApi()->get('/api/roads/(\d+)/([^/]+)/(.*)', array('ApiController', 'road'), EpiApi::external);
-getApi()->get('/api/wards/(\d+)', array('ApiController', 'ward'), EpiApi::external);
-getApi()->get('/api/wards/(\d+)/polls', array('ApiController', 'wardPolls'), EpiApi::external);
-getApi()->get('/api/wards/(\d+)/polls/(\d+)/([\d-\.]+)', array('ApiController', 'wardPoll'), EpiApi::external);
-getApi()->get('/api/wards/(\d+)/polls/(\d+)/([\d-\.]+)/map/live', array('ApiController', 'wardPollMapLive'), EpiApi::external);
-getApi()->get('/api/wards/(\d+)/polls/(\d+)/([\d-\.]+)/map/static', array('ApiController', 'wardPollMapStatic'), EpiApi::external);
-getRoute()->get('/api/wards/(\d+)/polls/(\d+)/([\d-\.]+)/map/img', array('ApiController', 'wardPollMapStatic302'), EpiApi::external);
-getApi()->get('/api/wards', array('ApiController', 'listWards'), EpiApi::external);
-getApi()->get('/api/committees', array('ApiController', 'committees'), EpiApi::external);
-getApi()->get('/api/councillors/(\d+)', array('ApiController', 'councillorById'), EpiApi::external);
-getApi()->get('/api/councillors/([^/]+)/(.*)', array('ApiController', 'councillorByName'), EpiApi::external);
-
-getApi()->get('/api/devapps/all', array('ApiController', 'devAppAll'), EpiApi::external);
-getApi()->get('/api/devapps/([D_].*)', array('ApiController', 'devApp'), EpiApi::external);
-
-getRoute()->get('/', 'dashboard');
-getRoute()->get('/about', 'about');
-getRoute()->get('/ideas', 'ideas');
-#getRoute()->get('/dashboard', 'dashboard');
-
-getRoute()->get('/user/home', array('UserController','home'));
-getRoute()->post('/user/add/place', array('UserController','addPlace'));
-
-getRoute()->get('/user/register', array('LoginController','displayRegister'));
-getRoute()->post('/user/register', array('LoginController','doRegister'));
-getRoute()->get('/user/login', array('LoginController','display'));
-getRoute()->post('/user/login', array('LoginController','doLogin'));
-getRoute()->get('/user/logout', array('LoginController','logout'));
-
-getRoute()->get('/lobbying/latereport', array('LobbyistController','latereport'));
-getRoute()->get('/lobbying/search/(.*)', array('LobbyistController','search'));
-getRoute()->get('/lobbying/lobbyists/(.*)', array('LobbyistController','showLobbyist'));
-getRoute()->get('/lobbying/clients/(.*)', array('LobbyistController','showClient'));
-getRoute()->get('/lobbying/thelobbied/(.*)', array('LobbyistController','showLobbied'));
-getRoute()->get('/lobbying/files/(.*)', array('LobbyistController','showFile'));
-getRoute()->get('/lobbyist/([^\/]*)', 'lobbyist'); # legacy REST location
-
-#getRoute()->get('/lobbyist/(.*)/details', 'lobbyistDetails');
-#getRoute()->get('/lobbyist/(.*)/link', 'lobbyistLink');
-
-getRoute()->get('/devapps', array('DevelopmentAppController','listAll'));
-getRoute()->get('/devapps/([^\/]+)', array('DevelopmentAppController','viewDevApp'));
-
-getRoute()->get('/meetings/votes', array('MeetingController','votesIndex'));
-getRoute()->get('/meetings/votes/member/([^\/]*)', array('MeetingController','votesMember'));
-
-getRoute()->get('/meetings/calendar', array('MeetingController','calendarView'));
-getRoute()->get('/meetings/calendar.ics', array('MeetingController','calendar'));
-getRoute()->get('/meetings/file/(\d+)', array('MeetingController','getFileCacheUrl'));
-getRoute()->get('/meetings', array('MeetingController','dolist')); // meetings
-getRoute()->get('/meetings/([^\/]*)', array('MeetingController','dolist')); // meetings/CATEGORY
-getRoute()->get('/meetings/meetid/(\d+)', array('MeetingController','meetidForward')); // meetings/CATEGORY/ID
-getRoute()->get('/meetings/([^\/]*)/(\d+)', array('MeetingController','meetingDetails')); // meetings/CATEGORY/ID
-getRoute()->get('/meetings/([^\/]*)/(\d+)/item/(\d+)', array('MeetingController','meetingDetails')); // meetings/CATEGORY/ID
-getRoute()->get('/meetings/([^\/]*)/(\d+)/item/(\d+)/(files|files.json)', array('MeetingController','itemFiles')); // meetings/CATEGORY/ID
-
-getRoute()->get('/chart/test', array('ChartController','test'));
-getRoute()->get('/chart/lobbying/daily', array('ChartController','lobbyingDaily'));
-
-getRoute()->get('.*', 'error404');
-getRoute()->run();
+function ottawaMediaRSS() {
+  $url = "http://ldnpressreleases.tumblr.com/rss";
+  $rss = file_get_contents($url);
+  $xml = simplexml_load_string($rss);
+  if (!is_object($xml)) {
+    # could not load RSS; just fail silently
+    print "<h4>Media Releases</h4>\n";
+    print "<i>Could not load media releases. Probably a temporary error.</i>";
+    return;
+  }
+  $items = $xml->xpath("//item");
+  print "<h4>Media Releases</h4>\n";
+  $max = 4;
+  $x = 0;
+  foreach ($items as $item) {
+    if ($x++ < $max) {
+    $title = $item->xpath("title"); $title = $title[0].'';
+    $link = $item->xpath("link"); $link = $link[0].'';
+    print "<small><a href=\"$link\" target=\"_blank\">$title</a></small><br/>\n";
+    }
+  }
+}
 
 function dashboard() {
-  // This is the Home Page Content
   global $OTT_WWW;
   top();
   ?>
@@ -114,7 +52,13 @@ function dashboard() {
   }
   # sometimes ottawa.ca ppl create meetings *way* in advance for testing purposes.
   # only look 2 months in advance. Typically meetings aren't created until 2 wks in advance anyway
-  $meetings = getDatabase()->all(" select id,category,date(starttime) starttime,meetid from meeting where date(starttime) > date(CURRENT_TIMESTAMP) and datediff(starttime,current_timestamp()) < 60 order by starttime ");
+  $meetings = getDatabase()->all(" 
+    select id,category,date(starttime) starttime,meetid 
+    from meeting 
+    where 
+      date(starttime) > date(CURRENT_TIMESTAMP) 
+      and datediff(starttime,current_timestamp()) < 60
+    order by starttime ");
   if (count($meetings) > 0) {
     ?>
     <tr>
@@ -154,65 +98,20 @@ function dashboard() {
   }
   ?>
   <tr>
-  <td colspan="3">  
+  <td colspan="3">
   <a class="btn-mini btn" href="<?php print $OTT_WWW; ?>/meetings/all"><i class="icon-list"></i> All Meetings</a>
   <a class="btn-mini btn" href="<?php print $OTT_WWW; ?>/meetings/calendar"><i class="icon-calendar"></i> Calendar</a>
   </td>
   </tr>
   </table>
+
+
   </div>
 
   <div class="span4">
-  <?php 
-    $url = "http://www.ldnpressreleases.tumblr.com/rss";
-    $rss = file_get_contents($url);
-    $xml = simplexml_load_string($rss);
-    if (!is_object($xml)) {
-      # could not load RSS; just fail silently
-      print "<h4>Media Releases</h4>\n";
-      print "<i>Could not load media releases. Probably a temporary error.</i>";
-      return;
-    }
-    $items = $xml->xpath('//item');
-    print "<h4>Media Releases</h4>\n";
-    $max = 4;
-    $x = 0;
-    foreach ($items as $item) {
-      if ($x++ < $max) {
-        $title = $item->xpath("title"); $title = $title[0].'';
-        $link = $item->xpath("link"); $link = $link[0].'';
-        $description = $item->xpath("description"); $description = $description[0].'';
-        $description = strip_tags($description);
-        $string = substr($description,0,252).'...';
-        print "<p><a href=\"$link\" target=\"_blank\">$title</a></p><small>". $string . "</small><hr />\n";
-      }
-    }
+  <?php
+  ottawaMediaRSS();
   ?>
-  <?php 
-    $url = "http://www.ldnplanning.tumblr.com/rss";
-    $rss = file_get_contents($url);
-    $xml = simplexml_load_string($rss);
-    if (!is_object($xml)) {
-      # could not load RSS; just fail silently
-      print "<h4>Planning Notices</h4>\n";
-      print "<i>Could not load planning notices. Probably a temporary error.</i>";
-      return;
-    }
-    $items = $xml->xpath('//item');
-    print "<h4>Planning Notices</h4>\n";
-    $max = 4;
-    $x = 0;
-    foreach ($items as $item) {
-      if ($x++ < $max) {
-        $title = $item->xpath("title"); $title = $title[0].'';
-        $link = $item->xpath("link"); $link = $link[0].'';
-        $description = $item->xpath("description"); $description = $description[0].'';
-        $description = strip_tags($description);
-        $string = substr($description,0,252).'...';
-        print "<p><a href=\"$link\" target=\"_blank\">$title</a></p><small>". $string . "</small><hr />\n";
-      }
-    }
-  ?>  
   <?php /* <script>
   function devapp_search_form_submit() {
     v = document.getElementById('devapp_search_value').value;
@@ -231,6 +130,7 @@ function dashboard() {
     document.location.href = 'lobbying/search/'+encodeURIComponent(v);
   }
   </script>
+  
   <h4>Development Applications</h4>
   <table class="table table-bordered table-hover table-condensed" style="width: 100%;">
   <?php
@@ -258,6 +158,13 @@ function dashboard() {
   </td>
   </tr>
   </table> */ ?>
+
+  <div class="input-prepend input-append">
+  <input type="text" id="devapp_search_value" placeholder="Search...">
+  <a class="btn" onclick="devapp_search_form_submit()"><i class="icon-search"></i> Search</button>
+  <a class="btn" href="devapps?since=999">Show All</a>
+  </div>
+
   </div>
 
   <div class="span4">

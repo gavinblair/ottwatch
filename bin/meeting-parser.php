@@ -1,14 +1,22 @@
 <?php
 
-$dirname = `dirname $argv[0]`;
+$dirname = `dirname meeting-parser.php`;
 $dirname = preg_replace("/\n/","",$dirname);
+ini_set('display_errors', TRUE);
+ini_set('display_startup_errors', TRUE);
+error_reporting(E_ALL);
+date_default_timezone_set('America/New_York');
+set_time_limit(0);
 
 set_include_path(get_include_path() . PATH_SEPARATOR . "$dirname/../lib");
 set_include_path(get_include_path() . PATH_SEPARATOR . "$dirname/../www");
 require_once('include.php');
 require_once('twitteroauth.php');
 
-if (count($argv) > 1) {
+//MeetingController::hardScan(); return;
+
+
+if (false) {
   if ($argv[1] == 'getVideos') {
 		# only look back 45 days 
 		$rows = getDatabase()->all(" 
@@ -48,21 +56,24 @@ if (count($argv) > 1) {
 }
 
 # get RSS of all meetings
-$data = `wget -qO - http://app05.ottawa.ca/sirepub/rss/rss.aspx | head -1`; # file_put_contents("rss.rss",$data);
-#$data = file_get_contents("rss.rss");
+#$data = `wget -qO - http://sire.london.ca/rss/rss.aspx | head -1`; # file_put_contents("rss.rss",$data);
+$data = file_get_contents("rss.rss");
 
 $xml = simplexml_load_string($data);
+
+
 $items = $xml->xpath("//item");
 
 # iterate through each meeting
 foreach ($items as $i) {
 
-	# [title] => ARAC - 2012-Jun-25 9:30 am
-	# [link] => http://sire/sirepub/mtgviewer.aspx?meetid=2211&doctype=MINUTES
-	# [description] => SimpleXMLElement Object ()
-	# [category] => ARAC
-	# [pubDate] => Thu, 01 Nov 2012 19:51:28 GMT
-	# [guid] => 2211 ARAC 2012-Nov-01 3:51:28 PM
+
+  # [title] => ARAC - 2012-Jun-25 9:30 am
+  # [link] => http://sire/sirepub/mtgviewer.aspx?meetid=2211&doctype=MINUTES
+  # [description] => SimpleXMLElement Object ()
+  # [category] => ARAC
+  # [pubDate] => Thu, 01 Nov 2012 19:51:28 GMT
+  # [guid] => 2211 ARAC 2012-Nov-01 3:51:28 PM
 
   $guid = $i->xpath("guid"); $guid = $guid[0];
   $title = $i->xpath("title"); $title = $title[0];
@@ -70,32 +81,33 @@ foreach ($items as $i) {
   $category = $i->xpath("category"); $category = $category[0];
 
   # regex out some details and fix http refs
-  $link = preg_replace("/.*sirepub/","http://app05.ottawa.ca/sirepub",$link);
+
+  $link = preg_replace("/.*sirepub/","http://sire.london.ca/",$link);
   $meetid = $link;
   $meetid = preg_replace("/.*meetid=/","",$meetid);
   $meetid = preg_replace("/&.*/","",$meetid);
   # ARAC - 2012-Jun-25 9:30 am
   $starttime = $title;
-  $starttime = preg_replace("/.* - 20/","20",$starttime);
+  $starttime = preg_replace("/.* - /","",$starttime);
   $starttime = preg_replace("/ AM$/"," am",$starttime);
-  $starttime = preg_replace("/ PM$/"," am",$starttime);
+  $starttime = preg_replace("/ PM$/"," pm",$starttime);
   $starttime = preg_replace("/ am$/","am",$starttime);
   $starttime = preg_replace("/ pm$/","pm",$starttime);
   $starttime = strftime("%Y-%m-%d %H:%M:%S",strtotime($starttime));
 
   # is this guid in the database already
-  $mdb = getDatabase()->one('select id from meeting where rssguid = :rssguid ', array(':rssguid' => $guid));
+  /*$mdb = getDatabase()->one('select id from meeting where rssguid = :rssguid ', array(':rssguid' => $guid));
   if ($mdb['id']) {
     # meeting has already been parsed
     continue;
-  }
+  }*/
   
   $mdb = getDatabase()->one('select id,rssguid from meeting where meetid = :meetid ', array(':meetid' => $meetid));
   $meetingid = $mdb['id'];
   if ($mdb['id']) {
     print "$category ($meetid) has changed guid\n";
     # meeting has changed guid, so needs rescraping.
-	  getDatabase()->execute(' 
+    getDatabase()->execute(' 
       update meeting set 
         rssguid = :rssguid,
         updated = CURRENT_TIMESTAMP
@@ -120,5 +132,4 @@ foreach ($items as $i) {
 	# import the items for the new meeting.
   MeetingController::downloadAndParseMeeting($meetingid);
 }
-
 ?>

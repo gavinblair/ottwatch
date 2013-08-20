@@ -111,7 +111,7 @@ class MeetingController {
 		$meetid = $m['meetid'];
 
 		# Get the full HTML for the meeting (all frames and details)
-    $url = "http://app05.ottawa.ca/sirepub/mtgviewer.aspx?meetid={$meetid}&doctype=AGENDA";
+    $url = "http://sire.london.ca/mtgviewer.aspx?meetid={$meetid}&doctype=AGENDA";
     $html = `wget -qO - '$url'`; // file_get_contents($url);
 
     $tmp = preg_grep('/g_locationPrimary/',explode("\n",$html));
@@ -370,7 +370,7 @@ class MeetingController {
   # for a given fileid, resolve the "cache" trick, then proxy download the real PDF
   static public function getFileCacheUrl ($fileid) {
     # get the data
-    $curl = 'http://app05.ottawa.ca/sirepub/view.aspx?cabinet=published_meetings&fileid=' . $fileid;
+    $curl = 'http://sire.london.ca/view.aspx?cabinet=published_meetings&fileid=' . $fileid;
     $odata = file_get_contents($curl);
     if (!preg_match('/script/',$odata)) {
       ?>
@@ -386,7 +386,7 @@ class MeetingController {
     # <script>document.location = 'cache/2/lkwtpr5l2u0ppewlizialyuu/4692203012013020316562.PDF';</script>
     $data = preg_replace("/';.*/","",$odata);
     $data = preg_replace("/.*'/","",$data);
-    $url = "http://app05.ottawa.ca/sirepub/$data";
+    $url = "http://sire.london.ca/$data";
     header("Location: $url");
     return;
     ## get the real PDF and echo it back.
@@ -395,11 +395,11 @@ class MeetingController {
   }
 
   static public function getDocumentUrl ($meetid,$doctype) {
-    return "http://app05.ottawa.ca/sirepub/agview.aspx?agviewmeetid={$meetid}&agviewdoctype={$doctype}";
+    return "http://sire.london.ca/agview.aspx?agviewmeetid={$meetid}&agviewdoctype={$doctype}";
   }
 
   static public function getItemUrl ($itemid) {
-    return "http://app05.ottawa.ca/sirepub/agdocs.aspx?doctype=agenda&itemid=".$itemid;
+    return "http://sire.london.ca/agdocs.aspx?doctype=agenda&itemid=".$itemid;
   }
 
   static public function getMeetingUrl ($id) {
@@ -433,7 +433,7 @@ class MeetingController {
 #    }
 #  }
 
-  static public function meetingDetails ($category,$meetid,$itemid) {
+  static public function meetingDetails ($category,$meetid,$itemid="") {
 
     $m = getDatabase()->one(" 
       select 
@@ -466,21 +466,6 @@ class MeetingController {
     $items = getDatabase()->all(" select * from item where meetingid = :meetingid order by id ",array("meetingid"=>$m['id']));
     top($title . " on " . substr($m['starttime'],0,10));
 
-    # any places for this meeting?
-    $places = getDatabase()->all( " 
-      select 
-        concat(p.rd_num,' ', r.rd_name,' ',r.rd_suffix,' ',coalesce(r.rd_directi,'')) addr,
-        astext(p.shape) point,
-        i.itemid,
-        p.rd_num,
-        r.rd_name,
-        r.rd_suffix,
-        r.rd_directi
-      from places p
-        join roadways r on p.roadid = r.OGR_FID
-        join item i on p.itemid = i.id
-      where p.itemid in (select id from item where meetingid = :meetingid) ",array("meetingid"=>$m['id']));
-    # LEFT hand navigation, items and files links
     ?>
 
     <script>
@@ -533,7 +518,7 @@ class MeetingController {
     <?php
     print "<b>$title</b><br/>";
     print "<small>".substr($m['starttime'],0,10)." ";
-    print "<a href=\"http://app05.ottawa.ca/sirepub/mtgviewer.aspx?meetid=".$meetid."&doctype=AGENDA\"><i class=\"icon-share\"></i> View on Ottawa.ca</a>";
+    print "<a href=\"http://sire.london.ca/mtgviewer.aspx?meetid=".$meetid."&doctype=AGENDA\"><i class=\"icon-share\"></i> View on London.ca</a>";
     print "</small>";
     ?>
 
@@ -585,7 +570,6 @@ class MeetingController {
     <?php if ($isStarted && !$m['minutes']) { ?>
     <li><a href="#tabsummary" data-toggle="tab">Summary</a></li>
     <?php } ?>
-    <li><a href="#tabmap" data-toggle="tab">Map</a></li>
     <li><a href="#tabdelegation" data-toggle="tab"><big><b>Public Delegations</b></big></a></li>
     <li><a href="#tabcomments" data-toggle="tab">Comments</a></li>
     </ul>
@@ -619,7 +603,7 @@ class MeetingController {
         }
       }
       if ($lastitemtitle != $itemtitle) {
-        // http://app05.ottawa.ca/sirepub/agdocs.aspx?doctype=minutes&itemid=301229
+        // http://sire.london.ca/agdocs.aspx?doctype=minutes&itemid=301229
         ?>
         <tr>
         <td colspan="4"><h4>ITEM: <?php print "$itemtitle"; ?><h4></td>
@@ -670,64 +654,7 @@ class MeetingController {
     </div>
     </div><!-- /tab -->
 
-    <div class="tab-pane" id="tabmap">
-    <div id="map_canvas" style="width:100%; height:590px;">
-      <script>
-
-      var firstResize = 1;
-      $('a[data-toggle="tab"]').on('shown', function (e) {
-        if (e.target.text == 'Map') {
-          if (firstResize == 1) {
-            google.maps.event.trigger(map, 'resize');
-            map.panTo(new google.maps.LatLng(45.420833,-75.59));
-            firstResize = 0;
-          }
-        }
-      });
-        var mapOptions = { 
-          center: new google.maps.LatLng(45.420833,-75.59), 
-          zoom: 10, 
-          mapTypeId: google.maps.MapTypeId.ROADMAP 
-        };
-        infowindow = new google.maps.InfoWindow({ content: '' });
-        map = new google.maps.Map(document.getElementById("map_canvas"), mapOptions);
-        <?php
-        foreach ($places as $p) {
-          $title = '';
-          foreach ($items as $tempi) {
-            if ($tempi['itemid'] == $p['itemid']) {
-              $title = $tempi['title'];
-            }
-          }
-          # use anonymous functions so variable scope is not insane
-					# [addr] => 265 CARLING AVE 
-					# [point] => POINT(-75.6998273 45.4011291)
-					# [itemid] => 2399
-          $loc = getLatLonFromPoint($p['point']);
-          # print "<b><a href=\"javascript:focusOn('item',{$i['itemid']})\">{$i['title']}</a></b><br/>\n";
-          ?>
-          (function(){
-		        myLatlng = new google.maps.LatLng(<?php print $loc['lat']; ?>,<?php print $loc['lon']; ?>);
-			      marker = new google.maps.Marker({ position: myLatlng, map: map, title: '<?php print $p['addr']; ?>' }); 
-            google.maps.event.addListener(marker, 'click', (function(marker) {
-              return function() {
-                infowindow.setContent(
-			            '<div>' + 
-			            '<b><?php print $p['addr']; ?></b> ' + 
-		              '<a href="javascript:focusOn(\'item\',<?php print $p['itemid']; ?>)">(Goto Agenda)</a><br/>' +
-                  '<?php print preg_replace("/'/","",$title); ?>' +
-			            '</div>'
-                );
-                infowindow.open(map, marker);
-              }
-            })(marker));
-          })();
-          <?php
-        }
-        ?>
-      </script>
-    </div>
-    </div><!-- /tab -->
+    
 
     <div class="tab-pane fade" id="tabcomments">
     <div style="padding: 10px; padding-top: 0px; overflow: scroll; height: 600px;">
@@ -916,7 +843,7 @@ class MeetingController {
       order by starttime desc ",
       array('category' => $category));
     foreach ($rows as $r) { 
-      $mtgurl = htmlspecialchars("http://app05.ottawa.ca/sirepub/mtgviewer.aspx?meetid={$r['meetid']}&doctype");
+      $mtgurl = htmlspecialchars("http://sire.london.ca/mtgviewer.aspx?meetid={$r['meetid']}&doctype");
       $myurl = htmlspecialchars($OTT_WWW."/meetings/{$r['category']}/{$r['meetid']}");
       ?>
 	    <tr>
@@ -946,7 +873,7 @@ class MeetingController {
 
     $m = getDatabase()->one(" select * from meeting where meetid = :id or id = :id ",array('id'=>$id));
     if (!$m['id']) { 
-      print "downloadAndParseMeeting for $id :: NOT FOUDN\n";
+      print "downloadAndParseMeeting for $id :: NOT FOUND\n";
       return; 
     }
 		$id = $m['id'];
@@ -957,7 +884,16 @@ class MeetingController {
 
     print "downloadAndParseMeeting for meeting:$id\n";
 
-    $agenda = file_get_contents(self::getDocumentUrl($m['meetid'],'MINUTES')); 
+    //$agenda = file_get_contents(self::getDocumentUrl($m['meetid'],'MINUTES')); 
+    $url = self::getDocumentUrl($m['meetid'],'MINUTES');
+    $curl = curl_init();
+    curl_setopt($curl, CURLOPT_URL, $url);
+    curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+    // you may set this options if you need to follow redirects. Though I didn't get any in your case
+    curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
+    $agenda = curl_exec($curl);
+    curl_close($curl);
+    
 		if (preg_match('/The file could not be found/',$agenda)) {
       # need to use the agenda
       print "Using AGENDA\n";
@@ -970,6 +906,8 @@ class MeetingController {
 
     # charset issues
     $agenda = mb_convert_encoding($agenda,"ascii");
+
+
 
     # XML issues
     $agenda = preg_replace("/&nbsp;/"," ",$agenda);

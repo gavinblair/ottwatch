@@ -22,7 +22,7 @@ create table people (
   name varchar(100),
   email varchar(100),
   password varchar(32),
-  created datetime default CURRENT_TIMESTAMP,
+  created timestamp default CURRENT_TIMESTAMP,
   primary key (id)
 ) engine = innodb;
 
@@ -38,10 +38,7 @@ create table places (
   personid mediumint,
   /* if place is associated with a meeting.ITEM, link here */
   itemid mediumint(9),
-  primary key (id),
-  constraint foreign key (personid) references people (id) on delete cascade on update cascade,
-  constraint foreign key (roadid) references roadways (OGR_FID) on delete cascade on update cascade
-  constraint foreign key (itemid) references item (id) on delete cascade on update cascade
+  primary key (id)
 ) engine = innodb;
 create unique index places_in1 on places (roadid,rd_num,personid);
 
@@ -63,19 +60,17 @@ create table lobbying (
   activity varchar(100),
   lobbied varchar(200),
   created datetime,
-  primary key (id),
-  constraint foreign key (lobbyfileid) references lobbyfile (id) on delete cascade on update cascade
-  constraint foreign key (electedofficialid) references electedofficials (id) on delete cascade on update cascade
+  primary key (id)
 ) engine = innodb;
 
 -- lobbying must be declared within 15 business days. But with weekends and worst case, that means
 -- most things under 23 are legit. So only put 24 days late and up in the report
 create or replace view latelobbying as
   select 
-	  id,
-	  lobbydate,
-	  created,
-	  datediff(created,lobbydate) diff
+    id,
+    lobbydate,
+    created,
+    datediff(created,lobbydate) diff
   from lobbying 
   where 
     datediff(created,lobbydate) >= 24;
@@ -104,7 +99,7 @@ create table devappstatus (
   devappid mediumint not null,
   statusdate datetime,
   status varchar(100),
-  created datetime default CURRENT_TIMESTAMP,
+  created timestamp default CURRENT_TIMESTAMP,
   primary key (id),
   constraint foreign key (devappid) references devapp (id) on delete cascade on update cascade
 ) engine = innodb;
@@ -135,8 +130,8 @@ create table meeting (
   contactEmail varchar(100),
   contactPhone varchar(30),
   members varchar(300),
-	minutes boolean default false,
-	youtube varchar(100),
+  minutes boolean default false,
+  youtube varchar(100),
   youtubeset datetime,
   created datetime,
   updated datetime,
@@ -238,7 +233,7 @@ create table electedofficials (
   primary key (id)
 ) engine = innodb;
 
-drop table permit;
+drop table if exists permit;
 create table permit (
   id mediumint not null auto_increment,
   st_num varchar(20),
@@ -256,7 +251,7 @@ create table permit (
   permit_number mediumint,
   app_type varchar(100),
   issued_date date,
-  created datetime default CURRENT_TIMESTAMP,
+  created timestamp default CURRENT_TIMESTAMP,
   primary key (id)
 ) engine = innodb;
 
