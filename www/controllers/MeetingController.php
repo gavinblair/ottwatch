@@ -371,7 +371,7 @@ class MeetingController {
   static public function getFileCacheUrl ($fileid) {
     # get the data
     $curl = 'http://sire.london.ca/view.aspx?cabinet=published_meetings&fileid=' . $fileid;
-    $odata = file_get_contents($curl);
+    $odata = `wget -qO - '$curl'`;
     if (!preg_match('/script/',$odata)) {
       ?>
       <center>
@@ -882,22 +882,26 @@ class MeetingController {
     $orig_items = getDatabase()->all(" select * from item where meetingid = $id ");
     $orig_files = getDatabase()->all(" select * from ifile where itemid in (select id from item where meetingid = $id) ");
 
-    print "downloadAndParseMeeting for meeting:$id\n";
 
     //$agenda = file_get_contents(self::getDocumentUrl($m['meetid'],'MINUTES')); 
     $url = self::getDocumentUrl($m['meetid'],'MINUTES');
-    $curl = curl_init();
-    curl_setopt($curl, CURLOPT_URL, $url);
-    curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-    // you may set this options if you need to follow redirects. Though I didn't get any in your case
-    curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
-    $agenda = curl_exec($curl);
-    curl_close($curl);
+    print "downloadAndParseMeeting for meeting:$id url: $url\n";
+    # using WGET because it figures out the 302 mess London has created for itself. GAH!
+    $agenda = `wget -qO - '$url'`;
+    #$curl = curl_init();
+    #curl_setopt($curl, CURLOPT_VERBOSE, true);
+    #curl_setopt($curl, CURLOPT_URL, $url);
+    #curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+    #// you may set this options if you need to follow redirects. Though I didn't get any in your case
+    #curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
+    #$agenda = curl_exec($curl);
+    #curl_close($curl);
     
 		if (preg_match('/The file could not be found/',$agenda)) {
       # need to use the agenda
       print "Using AGENDA\n";
-      $agenda = file_get_contents(self::getDocumentUrl($m['meetid'],'AGENDA')); 
+      $url = self::getDocumentUrl($m['meetid'],'AGENDA');
+      $agenda = `wget -qO - '$url'`;
     } else {
       # mark that we are in MINUTES mode for this meeting now
       print "Using MINUTES\n";
@@ -906,8 +910,6 @@ class MeetingController {
 
     # charset issues
     $agenda = mb_convert_encoding($agenda,"ascii");
-
-
 
     # XML issues
     $agenda = preg_replace("/&nbsp;/"," ",$agenda);
@@ -1105,7 +1107,7 @@ class MeetingController {
 	  foreach ($items as $item) {
       # print "  item:{$item['id']} title: {$item['title']}\n";
 
-      self::matchItemToPark($item['id'],$item['title']);
+      #self::matchItemToPark($item['id'],$item['title']);
 
       # look for references to addresses in the item title
       $words = explode(" ",$item['title']);
@@ -1121,56 +1123,64 @@ class MeetingController {
   	        $name .= $words[$x+1+$z]." ";
           }
           $name = trim($name);
-	        $roads = getDatabase()->all("
-	          select *
-			      from roadways 
-			      where 
-			        rd_name = upper(:name) 
-			        and (
-			          (:number % 2 = left_from % 2 and (:number between cast(left_from as unsigned) and cast(left_to as unsigned)))
-			          or (:number % 2 = left_from % 2 and (:number between cast(left_to as unsigned) and cast(left_from as unsigned)))
-			          or (:number % 2 = right_from % 2 and (:number between cast(right_from as unsigned) and cast(right_to as unsigned)))
-			          or (:number % 2 = right_from % 2 and (:number between cast(right_to as unsigned) and cast(right_from as unsigned)))
-			        )
-	          ",array(
-		          'number' => $number,
-		          'name' => $name
-	        ));
-	        if (count($roads) > 0) {
-            #TODO: what if match may? should probably disambituate based on suffix.
-            $road = $roads[0];
-	          # print "[$x]: ".$words[$x]." -- ".$words[$x+1]." matched ".count($roads)." roads \n";
-				    $placeid = getDatabase()->execute(" insert into places (roadid,rd_num,itemid) values (:roadid,:rd_num,:itemid) ",array(
-				      'roadid' => $road['OGR_FID'],
-				      'rd_num' => $number,
-				      'itemid' => $item['id'],
-				    ));
-            $geo = getAddressLatLon($number,$name);
-            if ($geo->status == 'OK') {
-              $lat = $geo->results[0]->geometry->location->lat;
-              $lon = $geo->results[0]->geometry->location->lng;
-  				    getDatabase()->execute(" update places set shape = PointFromText('POINT($lon $lat)') where id = $placeid ");
-            }
-	        }
+          if (false) { // ROADWAYS IS OTTAWA SPECIFIC
+  	        $roads = getDatabase()->all("
+  	          select *
+  			      from roadways 
+  			      where 
+  			        rd_name = upper(:name) 
+  			        and (
+  			          (:number % 2 = left_from % 2 and (:number between cast(left_from as unsigned) and cast(left_to as unsigned)))
+  			          or (:number % 2 = left_from % 2 and (:number between cast(left_to as unsigned) and cast(left_from as unsigned)))
+  			          or (:number % 2 = right_from % 2 and (:number between cast(right_from as unsigned) and cast(right_to as unsigned)))
+  			          or (:number % 2 = right_from % 2 and (:number between cast(right_to as unsigned) and cast(right_from as unsigned)))
+  			        )
+  	          ",array(
+  		          'number' => $number,
+  		          'name' => $name
+  	        ));
+  	        if (count($roads) > 0) {
+              #TODO: what if match may? should probably disambituate based on suffix.
+              $road = $roads[0];
+  	          # print "[$x]: ".$words[$x]." -- ".$words[$x+1]." matched ".count($roads)." roads \n";
+  				    $placeid = getDatabase()->execute(" insert into places (roadid,rd_num,itemid) values (:roadid,:rd_num,:itemid) ",array(
+  				      'roadid' => $road['OGR_FID'],
+  				      'rd_num' => $number,
+  				      'itemid' => $item['id'],
+  				    ));
+              $geo = getAddressLatLon($number,$name);
+              if ($geo->status == 'OK') {
+                $lat = $geo->results[0]->geometry->location->lat;
+                $lon = $geo->results[0]->geometry->location->lng;
+    				    getDatabase()->execute(" update places set shape = PointFromText('POINT($lon $lat)') where id = $placeid ");
+              }
+  	        }
+          } // END OTTAWA SPECIFIC ROADWAYS
         }
       }
 
-	    $html = file_get_contents(self::getItemUrl($item['itemid']));
+      #$html = file_get_contents(self::getItemUrl($item['itemid']));
+      $url = self::getItemUrl($item['itemid']);
+      $html = `wget -qO - '$url'`; 
       self::parseVotingResults($item,$html);
 		  $lines = explode("\n",$html);
 	    $files = array();
 		  foreach ($lines as $line) {
+        $line = preg_replace("/\n/",'',$line);
+        $line = preg_replace("/\r/",'',$line);
 		    if (preg_match("/fileid=/",$line)) {
-          $line = preg_replace("/\n/"," ",$line);
-          $line = preg_replace("/\r/","",$line);
 
           $title = $line;
           $title = preg_replace("/.*&nbsp;/","",$title);
           $title = preg_replace("/<.*/","",$title);
+          #            <td class="tabledata"><a href=view.aspx?cabinet=published_meetings&fileid=13936 target=parent><img src="images/pdf.gif" border="0" alt="PDF Document"></a>&nbsp;&nbsp;4th Report of the Audit Committee - 2011-09-29 AC Report 4.doc</td>
 
-		      $fileid = $line;
-		      $fileid = preg_replace("/.*fileid=/","",$fileid);
-		      $fileid = preg_replace('/".*/',"",$fileid);
+          $matches = array();
+          if (!preg_match("/fileid=(\d+)/",$line,$matches)) {
+            print "DEBUG: line matched fileid= but match failed. more borken HTML, likely\n";
+            continue;
+          }
+          $fileid = $matches[1];
 
           # print "    file: $title\n";
 		  	  getDatabase()->execute('insert into ifile (itemid,fileid,title,created,updated) values (:itemid,:fileid,:title,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) ', array(
@@ -1363,7 +1373,8 @@ class MeetingController {
   }
 
   public function matchItemToPark ($id,$title) {
-
+    # Ottawa specific open data
+    return; 
     # any park names contained in item title?
     $rows = getDatabase()->all(" select * from 2010_parks_all_parkland where instr(upper(:title),upper(name)) > 0 ",array('title'=>$title));
     foreach ($rows as $r) {

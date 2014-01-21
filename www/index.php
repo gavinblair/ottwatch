@@ -339,7 +339,9 @@ function copyToClipboard (text) {
   window.prompt ("Copy to clipboard: Ctrl+C, Enter", text);
 }
 </script>
+<!--
 <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=<?php print OttWatchConfig::GOOGLE_API_KEY; ?>&sensor=false"></script>
+-->
 </head>
 <body>
 
@@ -351,23 +353,23 @@ function copyToClipboard (text) {
 <!--<li><a href="<?php print $OTT_WWW; ?>/dashboard">Dashboard</a></li>-->
 <li><a href="<?php print $OTT_WWW; ?>/meetings/votes">Voting History</a></li>
 <li><a href="<?php print $OTT_WWW; ?>/about">About</a></li>
-<li><a href="<?php print $OTT_WWW; ?>/ideas">Ideas</a></li>
-<li><a href="<?php print $OTT_WWW; ?>/api/about">API</a></li>
+<!--li><a href="<?php print $OTT_WWW; ?>/ideas">Ideas</a></li-->
+<!--li><a href="<?php print $OTT_WWW; ?>/api/about">API</a></li-->
 <?php
-if (!LoginController::isLoggedIn()) {
+//if (!LoginController::isLoggedIn()) {
   /*
   ?>
   <li><a href="<?php print $OTT_WWW; ?>/user/login">Login</a></li>
   <?php
   */
-} else {
+//} else {
   /*
   ?>
   <li><a href="<?php print $OTT_WWW; ?>/user/home"><?php print getSession()->get('user_email'); ?></a></li>
   <li><a href="<?php print $OTT_WWW; ?>/user/logout">Logout</a></li>
   <?php
   */
-}
+//}
 ?>
 </ul>
 </div></div>
