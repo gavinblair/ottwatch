@@ -9,11 +9,12 @@
 
 	// The commands
 	$commands = array(
+		'cd ..',
 		'echo $PWD',
 		'whoami',
 		'git stash save --keep-index',
-		'git stash drop',
 		'git pull --no-edit',
+		'git stash drop',
 		'git status',
 		'git submodule sync',
 		'git submodule update',
