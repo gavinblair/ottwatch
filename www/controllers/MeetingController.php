@@ -13,7 +13,8 @@ class MeetingController {
   static public function votesIndex() {
     top();
     ?>
-    Choose the name of a council or committee member to see their entire voting history.
+    <!--Choose the name of a council or committee member to see their entire voting history.-->
+    COMING SOON
     <p/>
     <ul>
     <?php
@@ -1109,60 +1110,14 @@ class MeetingController {
 
       #self::matchItemToPark($item['id'],$item['title']);
 
-      # look for references to addresses in the item title
-      $words = explode(" ",$item['title']);
-      for ($x = 0; $x < (count($words)-1); $x++) {
-        $number = $words[$x];
-        if (!preg_match("/\d+/",$number)) {
-         continue;
-        }
-        # try name=X=1 and also name="(x+1) (x+1)"
-        for ($y = 1; $y <= 2; $y++) {
-          $name = '';
-          for ($z = 0; $z < $y; $z++) {
-  	        $name .= $words[$x+1+$z]." ";
-          }
-          $name = trim($name);
-          if (false) { // ROADWAYS IS OTTAWA SPECIFIC
-  	        $roads = getDatabase()->all("
-  	          select *
-  			      from roadways 
-  			      where 
-  			        rd_name = upper(:name) 
-  			        and (
-  			          (:number % 2 = left_from % 2 and (:number between cast(left_from as unsigned) and cast(left_to as unsigned)))
-  			          or (:number % 2 = left_from % 2 and (:number between cast(left_to as unsigned) and cast(left_from as unsigned)))
-  			          or (:number % 2 = right_from % 2 and (:number between cast(right_from as unsigned) and cast(right_to as unsigned)))
-  			          or (:number % 2 = right_from % 2 and (:number between cast(right_to as unsigned) and cast(right_from as unsigned)))
-  			        )
-  	          ",array(
-  		          'number' => $number,
-  		          'name' => $name
-  	        ));
-  	        if (count($roads) > 0) {
-              #TODO: what if match may? should probably disambituate based on suffix.
-              $road = $roads[0];
-  	          # print "[$x]: ".$words[$x]." -- ".$words[$x+1]." matched ".count($roads)." roads \n";
-  				    $placeid = getDatabase()->execute(" insert into places (roadid,rd_num,itemid) values (:roadid,:rd_num,:itemid) ",array(
-  				      'roadid' => $road['OGR_FID'],
-  				      'rd_num' => $number,
-  				      'itemid' => $item['id'],
-  				    ));
-              $geo = getAddressLatLon($number,$name);
-              if ($geo->status == 'OK') {
-                $lat = $geo->results[0]->geometry->location->lat;
-                $lon = $geo->results[0]->geometry->location->lng;
-    				    getDatabase()->execute(" update places set shape = PointFromText('POINT($lon $lat)') where id = $placeid ");
-              }
-  	        }
-          } // END OTTAWA SPECIFIC ROADWAYS
-        }
-      }
 
       #$html = file_get_contents(self::getItemUrl($item['itemid']));
       $url = self::getItemUrl($item['itemid']);
       $html = `wget -qO - '$url'`; 
-      self::parseVotingResults($item,$html);
+      
+      //Voting Results are for Ottawa only.
+      //We'd have to scrape the votes much differently (in the minutes, not in the docs)
+      #self::parseVotingResults($item,$html);
 		  $lines = explode("\n",$html);
 	    $files = array();
 		  foreach ($lines as $line) {
@@ -1313,8 +1268,10 @@ class MeetingController {
     $html = preg_replace("/align=center/"," ",$html);
     $html = preg_replace('/.*<table id="MotionVotesResultsTable"/',"<table ",$html);
     $html = preg_replace('/<table id="Table1".*/','',$html);
-
-    $xml = simplexml_load_string($html);
+    $doc = new DOMDocument();
+    $doc->loadHTML($html);
+    $xml = simplexml_import_dom($doc);
+    //$xml = simplexml_load_string($html);
     if (!is_object($xml)) {
       print "Error creating voting snippet\n";
       return;
@@ -1322,6 +1279,7 @@ class MeetingController {
 
     # now XPATH and tease out the votes
     $tblVotes = array_shift($xml->xpath("//table[@id='tblVotes']"));
+
     $trs = $tblVotes->xpath("tr");
     while (count($trs) > 0) {
 

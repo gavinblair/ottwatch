@@ -56,11 +56,10 @@ if (false) {
 }
 
 # get RSS of all meetings
-#$data = `wget -qO - http://sire.london.ca/rss/rss.aspx | head -1`; # file_put_contents("rss.rss",$data);
-$data = file_get_contents("rss.rss");
+$data = `wget -qO - http://sire.london.ca/rss/rss.aspx | head -1`; # file_put_contents("rss.rss",$data);
+#$data = file_get_contents("rss.rss");
 
 $xml = simplexml_load_string($data);
-
 
 $items = $xml->xpath("//item");
 
@@ -82,10 +81,11 @@ foreach ($items as $i) {
 
   # regex out some details and fix http refs
 
-  $link = preg_replace("/.*sirepub/","http://sire.london.ca/",$link);
-  $meetid = $link;
-  $meetid = preg_replace("/.*meetid=/","",$meetid);
-  $meetid = preg_replace("/&.*/","",$meetid);
+  //$link = preg_replace("/.*sirepub/","http://sire.london.ca/",$link);
+  $parts = explode('?meetid=', $link);
+  $parts = explode('&amp;', $parts[1]);
+  $meetid = $parts[0];
+  
   # ARAC - 2012-Jun-25 9:30 am
   $starttime = $title;
   $starttime = preg_replace("/.* - /","",$starttime);
@@ -96,11 +96,11 @@ foreach ($items as $i) {
   $starttime = strftime("%Y-%m-%d %H:%M:%S",strtotime($starttime));
 
   # is this guid in the database already
-  /*$mdb = getDatabase()->one('select id from meeting where rssguid = :rssguid ', array(':rssguid' => $guid));
+  $mdb = getDatabase()->one('select id from meeting where rssguid = :rssguid ', array(':rssguid' => $guid));
   if ($mdb['id']) {
     # meeting has already been parsed
     continue;
-  }*/
+  }
   
   $mdb = getDatabase()->one('select id,rssguid from meeting where meetid = :meetid ', array(':meetid' => $meetid));
   $meetingid = $mdb['id'];
