@@ -9,7 +9,7 @@
 
 	// The commands
 	$commands = array(
-		'cd ..',
+		'cd /var/www/ottwatch',
 		'echo $PWD',
 		'whoami',
 		'git stash save --keep-index',
