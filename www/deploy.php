@@ -10,6 +10,7 @@
 	// The commands
 	$commands = array(
 		'echo $PWD',
+		'cd ..',
 		'whoami',
 		'git pull',
 		'git status',
