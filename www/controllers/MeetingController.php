@@ -14,7 +14,7 @@ class MeetingController {
     top();
     ?>
     <!--Choose the name of a council or committee member to see their entire voting history.-->
-    COMING SOON
+    COMING SOON - <a href='http://gist.io/8565583'>want to help?</a>
     <p/>
     <ul>
     <?php
