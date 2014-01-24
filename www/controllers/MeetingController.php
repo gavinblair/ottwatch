@@ -1089,7 +1089,7 @@ class MeetingController {
 	  }
 
     //get vote information
-    self::parseVotingResults($id, $url);
+    //self::parseVotingResults($id, $url);
     
     # purge existing files; not needed as delete ITEM cascades
     # getDatabase()->execute(" delete from ifile where itemid in (select id from item where meetingid = :id) ",array('id'=>$id));

@@ -62,7 +62,7 @@ $data = `wget -qO - http://sire.london.ca/rss/rss.aspx | head -1`; # file_put_co
 $xml = simplexml_load_string($data);
 
 $items = $xml->xpath("//item");
-
+$items = array_reverse($items);
 # iterate through each meeting
 foreach ($items as $i) {
 
