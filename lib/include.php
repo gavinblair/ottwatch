@@ -15,6 +15,7 @@ if (1) {
 
 	include_once 'bitly.php';
 	include_once 'Epi.php';
+  include_once 'Encoding.php';
 
 	# Prepare the database classes
 	Epi::setPath('base', "$base/www/epiphany/src");
@@ -269,9 +270,9 @@ function renderShareLinks($text,$url) {
   $twUrl = "https://twitter.com/share".
     "?url=".urlencode($url).
     "&text=".urlencode($text).
-    "&via=OttWatch".
-    "&related=odonnell_k".
-    "&hashtags=ottpoli".
+    "&via=ldnwatch".
+    "&related=opencouncil".
+    "&hashtags=ldnont".
     "";
 
   ?>

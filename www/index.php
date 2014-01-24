@@ -164,17 +164,18 @@ function dashboard() {
 
   <div class="span4">
   <?php 
-    $url = "http://www.ldnpressreleases.tumblr.com/rss";
+    //$url = "http://www.ldnpressreleases.tumblr.com/rss";
+    $url = "http://www.feedyes.com/feed.php?f=NDv40itdxAFzeOVd";
     $rss = file_get_contents($url);
     $xml = simplexml_load_string($rss);
     if (!is_object($xml)) {
       # could not load RSS; just fail silently
-      print "<h4>Media Releases</h4>\n";
+      print "<h4>London.ca News</h4>\n";
       print "<i>Could not load media releases. Probably a temporary error.</i>";
       return;
     }
     $items = $xml->xpath('//item');
-    print "<h4>Media Releases</h4>\n";
+    print "<h4>London.ca News</h4>\n";
     $max = 4;
     $x = 0;
     foreach ($items as $item) {
@@ -189,7 +190,7 @@ function dashboard() {
     }
   ?>
   <?php 
-    $url = "http://www.ldnplanning.tumblr.com/rss";
+    /*$url = "http://www.ldnplanning.tumblr.com/rss";
     $rss = file_get_contents($url);
     $xml = simplexml_load_string($rss);
     if (!is_object($xml)) {
@@ -211,7 +212,7 @@ function dashboard() {
         $string = substr($description,0,252).'...';
         print "<p><a href=\"$link\" target=\"_blank\">$title</a></p><small>". $string . "</small><hr />\n";
       }
-    }
+    }*/
   ?>  
   <?php /* <script>
   function devapp_search_form_submit() {
@@ -397,23 +398,9 @@ function bottom() {
   ?>
 <div class="well">
 <a href="<?php print $OTT_WWW; ?>"><img style="float: right; padding-left: 5px; width: 50px; height: 50px;" src="<?php print $OTT_WWW; ?>/img/ottwatch.png"/></a>
-<i>Created by <a href="http://kevino.ca"><b>Kevin O'Donnell</b></a> - <b><a href="http://twitter.com/ODonnell_K">@ODonnell_K</a></b></i><br/>
-On Twitter? Follow <b><a href="http://twitter.com/ldnwatch">@ldnwatch</a></b> and <br/>
-
-<div id="clock">
-<script language="JavaScript">
-TargetDate = "10/27/2014 6:00 PM";
-BackColor = "ffffff";
-ForeColor = "ed1b24";
-CountActive = true;
-CountStepper = -1;
-LeadingZero = true;
-DisplayFormat = "<span class=\"clockdigit\">%%D%%</span> days until election day!";
-FinishMessage = "It is finally here!";
-</script>
-<script language="JavaScript" src="http://scripts.hashemian.com/js/countdown.js"></script>
-</div>
-</i>
+<i>Ottwatch Created by <a href="http://kevino.ca"><b>Kevin O'Donnell</b></a> - <b><a href="http://twitter.com/ODonnell_K">@ODonnell_K</a></b></i><br/>
+<i>Open Council Created by <a href="http://gavinblair.github.io"><b>Gavin Blair</b></a> - <b><a href="http://twitter.com/gavinblair">@gavinblair</a></b></i><br/>
+On Twitter? Follow <b><a href="http://twitter.com/ldnwatch">@ldnwatch</a></b></i>
 
 
 <div class="clearfix"></div>

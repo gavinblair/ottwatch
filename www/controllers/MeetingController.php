@@ -346,19 +346,24 @@ class MeetingController {
     $o = $fileTitle;
     $a = explode(" ",$itemTitle);
     $b = explode(" ",$fileTitle);
+    
     while (count($b)) {
-      $a[0] = preg_replace("/[^a-zA-Z0-9]*/","",$a[0]);
-      $b[0] = preg_replace("/[^a-zA-Z0-9]*/","",$b[0]);
-      if ($a[0] == $b[0]) {
+      if(isset($a[0])){
+        $a[0] = preg_replace("/[^a-zA-Z0-9]*/","",$a[0]);
+      }
+      if(isset($b[0])){
+        $b[0] = preg_replace("/[^a-zA-Z0-9]*/","",$b[0]);
+      }
+      if (isset($a[0]) && isset($b[0]) && $a[0] == $b[0]) {
         array_shift($a);
         array_shift($b);
         continue;
       }
-      if (preg_match("/^{$b[0]}/",$a[0])) {
+      if (isset($a[0]) && isset($b[0]) && preg_match("/^{$b[0]}/",$a[0])) {
         array_shift($b);
         continue;
       }
-      if ($b[0] == '-') {
+      if (isset($b[0]) &&$b[0] == '-') {
         array_shift($b);
         continue;
       }
@@ -372,23 +377,8 @@ class MeetingController {
   static public function getFileCacheUrl ($fileid) {
     # get the data
     $curl = 'http://sire.london.ca/view.aspx?cabinet=published_meetings&fileid=' . $fileid;
-    $odata = `wget -qO - '$curl'`;
-    if (!preg_match('/script/',$odata)) {
-      ?>
-      <center>
-      <h1>Error</h1>
-      The file is not currently accessible due to an error on ottawa.ca
-      <p/>
-      Please try again later
-      </center>
-      <?php
-      return;
-    }
-    # <script>document.location = 'cache/2/lkwtpr5l2u0ppewlizialyuu/4692203012013020316562.PDF';</script>
-    $data = preg_replace("/';.*/","",$odata);
-    $data = preg_replace("/.*'/","",$data);
-    $url = "http://sire.london.ca/$data";
-    header("Location: $url");
+    
+    header("Location: $curl");
     return;
     ## get the real PDF and echo it back.
     #header("Content-Type: application/pdf");
@@ -492,7 +482,7 @@ class MeetingController {
         }
 
         url = '<?php print OttWatchConfig::WWW; ?>/meetings/file/' + id;
-        frameurl = 'http://docs.google.com/viewer?url='+escape(url)+'&embedded=true';
+        frameurl = url;//'http://docs.google.com/viewer?url='+escape(url)+'&embedded=true';
         $('#tablist').append('<li><a href="#tabfile'+id+'" data-toggle="tab">'+title+'</a></li>');
         tabcontent = '';
         tabcontent = tabcontent + '<div class="tab-pane active in" id="tabfile'+id+'">';
@@ -569,9 +559,9 @@ class MeetingController {
     <li><a href="#tabvotes" data-toggle="tab">Votes</a></li>
     <?php } ?>
     <?php if ($isStarted && !$m['minutes']) { ?>
-    <li><a href="#tabsummary" data-toggle="tab">Summary</a></li>
+    <!--li><a href="#tabsummary" data-toggle="tab">Summary</a></li-->
     <?php } ?>
-    <li><a href="#tabdelegation" data-toggle="tab"><big><b>Public Delegations</b></big></a></li>
+    <!--li><a href="#tabdelegation" data-toggle="tab"><big><b>Public Delegations</b></big></a></li-->
     <li><a href="#tabcomments" data-toggle="tab">Comments</a></li>
     </ul>
 
@@ -1040,7 +1030,7 @@ class MeetingController {
 				if (!is_object($xml)) {
 					print "WARNING, bad snippet >> $snippet <<\n";
 					print "WARNING, RAW WAS THIS>> $raw <<\n";
-					$title = '<i class="icon-warning-sign"></i> Doh! title autodection failed';
+					$title = ''; //<i class="icon-warning-sign"></i> Doh! title autodection failed';
 				} else {
 	        $title = $xml->xpath("//span"); 
           if (count($title) == 0) {
@@ -1097,6 +1087,9 @@ class MeetingController {
         array_push($spool,$line);
       }
 	  }
+
+    //get vote information
+    self::parseVotingResults($id, $url);
     
     # purge existing files; not needed as delete ITEM cascades
     # getDatabase()->execute(" delete from ifile where itemid in (select id from item where meetingid = :id) ",array('id'=>$id));
@@ -1247,15 +1240,107 @@ class MeetingController {
 
   }
 
-  public function parseVotingResults($item,$html) {
+  public function multiexplode ($delimiters,$string) {
+    $ready = str_replace($delimiters, $delimiters[0], $string);
+    $launch = explode($delimiters[0], $ready);
+    return  $launch;
+  }
 
-    if (preg_match('/Item not found/',$html)) {
-      return;
+  public function startsWith ($haystack, $needle) {
+      return $needle === "" || strpos($haystack, $needle) === 0;
+  }
+
+  public function parseVotingResults($meetingid, $url) {
+
+    $sireDataHtml = `wget -qO - '$url'`;
+    $sireDataHtml = html_entity_decode($sireDataHtml);
+    $sireDataHtml = strip_tags($sireDataHtml);
+
+    $sireDataHtml = str_replace("\n", ' ', $sireDataHtml);
+
+
+    $sireDataMotions = self::multiexplode(array('Motion made by ', 'The motion to '), $sireDataHtml);
+
+    // Remove the first item
+    array_shift($sireDataMotions);
+
+    $minuteMotions = array();
+
+    foreach($sireDataMotions as $sireMotion) {
+      // More work needs to be done here to remove all invalid characters
+      $sireMotion = Encoding::fixUTF8($sireMotion);
+      // Replace all of the multi-spaces with one space
+      $sireMotion = preg_replace('!\s+!', ' ', $sireMotion);
+
+      $motionPassedPos = strpos($sireMotion, 'Motion Passed');
+      $motionFailedPos = strpos($sireMotion, 'Motion Failed');
+      $motionStatusPos = max($motionPassedPos, $motionFailedPos);
+
+      $motionText = trim(substr($sireMotion, 0, $motionStatusPos));
+
+      if (self::startsWith($motionText, 'Councillor')) {
+        $motionText = 'Motion made by ' . $motionText;
+      } else {
+        $motionText = 'The motion to ' . $motionText;
+      }
+      
+      //$motionText = substr($motionText, 0, 125);
+
+      $motionPassed = $motionPassedPos !== FALSE;
+      $motionFailed = $motionFailedPos !== FALSE;
+
+      if (!$motionFailed && !$motionPassed) {
+        // Not a votable motion.  Normally a follow up motion is related to this one.
+        // In a future version, it should possibly merge the 2
+        continue;
+      }
+
+      if ($motionFailed && $motionPassed) {
+        // This should ideally NEVER happen.  This is normally the result of not having
+        // All possible splitting values for motions
+        continue;
+      }
+
+      // It can't be both
+      if ($motionFailed) {
+        $motionPassed = false;
+      }
+
+      $yeas = array();
+      $nays = array();
+
+      $yeasTextPos = strpos($sireMotion, 'YEAS:');
+      $naysTextPos = strpos($sireMotion, 'NAYS:');
+
+      if ($yeasTextPos !== FALSE) {
+        $yeasText = substr($sireMotion, $yeasTextPos + 5);
+        $yeasText = substr($yeasText, 0, strpos($yeasText, '('));
+
+        $yeas = array_map('trim', explode(',', $yeasText));
+      }
+
+      if ($naysTextPos !== FALSE) {
+        $naysText = substr($sireMotion, $naysTextPos + 5);
+        $naysText = substr($naysText, 0, strpos($naysText, '('));
+
+        $nays = array_map('trim', explode(',', $naysText));
+      }
+
+      $motion = array();
+
+      $motion['motion'] = $motionText;
+      $motion['passed'] = $motionPassed;
+      $motion['yeas'] = $yeas;
+      $motion['nays'] = $nays;
+      
+
+      array_push($minuteMotions, $motion);
     }
-    if (preg_match('/No voting recorded/',$html)) {
-      # nada!
-      return;
+    foreach($minuteMotions as $m){
+
     }
+    /*******/
+
 
     # scope HTML to the voting results block.
     $html = preg_replace("/&nbsp;/"," ",$html);
