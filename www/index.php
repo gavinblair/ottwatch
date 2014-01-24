@@ -141,7 +141,7 @@ function dashboard() {
   </td>
   </tr>
   <?php
-  $meetings = getDatabase()->all(" select id,meetid,category,date(starttime) starttime from meeting where date(starttime) < date(CURRENT_TIMESTAMP) order by starttime desc limit 5 ");
+  $meetings = getDatabase()->all(" select id,meetid,category,date(starttime) starttime from meeting where date(starttime) < date(CURRENT_TIMESTAMP) order by starttime desc limit 15 ");
   foreach ($meetings as $m) {
     $mtgurl = htmlspecialchars("http://sire.london.ca/mtgviewer.aspx?meetid={$m['meetid']}&doctype");
     ?>
@@ -165,7 +165,7 @@ function dashboard() {
   <div class="span4">
   <?php 
     //$url = "http://www.ldnpressreleases.tumblr.com/rss";
-    $url = "http://www.feedyes.com/feed.php?f=NDv40itdxAFzeOVd";
+    $url = "http://www.feedyes.com/feed.php?f=97uC9k92aVc03l17";
     $rss = file_get_contents($url);
     $xml = simplexml_load_string($rss);
     if (!is_object($xml)) {
@@ -176,7 +176,7 @@ function dashboard() {
     }
     $items = $xml->xpath('//item');
     print "<h4>London.ca News</h4>\n";
-    $max = 4;
+    $max = 7;
     $x = 0;
     foreach ($items as $item) {
       if ($x++ < $max) {
@@ -345,13 +345,14 @@ function copyToClipboard (text) {
 -->
 </head>
 <body>
-
+  <a href='/'><img src='/img/opencouncil.png' alt='Open Council' /></a><br />&nbsp;
 <div class="row-fluid">
 <div class="span12">
 <div class="navbar"><div class="navbar-inner">
 <ul class="nav">
 <li><a href="<?php print $OTT_WWW; ?>">Home</a></li>
 <!--<li><a href="<?php print $OTT_WWW; ?>/dashboard">Dashboard</a></li>-->
+<li><a href="<?php print $OTT_WWW; ?>/meetings/all">Meetings</a></li>
 <li><a href="<?php print $OTT_WWW; ?>/meetings/votes">Voting History</a></li>
 <li><a href="<?php print $OTT_WWW; ?>/about">About</a></li>
 <!--li><a href="<?php print $OTT_WWW; ?>/ideas">Ideas</a></li-->
